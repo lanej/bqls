@@ -55,6 +55,99 @@ func TestHandler_commandListProjects(t *testing.T) {
 	})
 }
 
+func TestHandler_commandCancelQuery(t *testing.T) {
+	t.Run("cancels the job resolved from the job virtual document uri", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bqClient := mock_bigquery.NewMockClient(ctrl)
+		job := mock_bigquery.NewMockBigqueryJob(ctrl)
+		bqClient.EXPECT().JobFromProject(gomock.Any(), "my-project", "my-job", "US").Return(job, nil)
+		job.EXPECT().Cancel(gomock.Any()).Return(nil)
+
+		h := &Handler{bqClient: bqClient}
+
+		uri := lsp.NewJobVirtualTextDocumentURI("my-project", "my-job", "US")
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{
+			Command:   CommandCancelQuery,
+			Arguments: []any{string(uri)},
+		})
+		if err != nil {
+			t.Fatalf("commandCancelQuery() error = %v", err)
+		}
+	})
+
+	t.Run("returns error when arguments are missing", func(t *testing.T) {
+		h := &Handler{}
+
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{Command: CommandCancelQuery})
+		if err == nil {
+			t.Fatal("commandCancelQuery() error = nil, want error")
+		}
+	})
+
+	t.Run("returns error when uri is not a virtual text document", func(t *testing.T) {
+		h := &Handler{}
+
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{
+			Command:   CommandCancelQuery,
+			Arguments: []any{"file:///tmp/query.sql"},
+		})
+		if err == nil {
+			t.Fatal("commandCancelQuery() error = nil, want error")
+		}
+	})
+
+	t.Run("returns error when uri is a table virtual document, not a job", func(t *testing.T) {
+		h := &Handler{}
+
+		uri := lsp.NewTableVirtualTextDocumentURI("my-project", "my-dataset", "my-table")
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{
+			Command:   CommandCancelQuery,
+			Arguments: []any{string(uri)},
+		})
+		if err == nil {
+			t.Fatal("commandCancelQuery() error = nil, want error")
+		}
+	})
+
+	t.Run("propagates errors from JobFromProject", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bqClient := mock_bigquery.NewMockClient(ctrl)
+		wantErr := errors.New("job not found")
+		bqClient.EXPECT().JobFromProject(gomock.Any(), "my-project", "my-job", "US").Return(nil, wantErr)
+
+		h := &Handler{bqClient: bqClient}
+
+		uri := lsp.NewJobVirtualTextDocumentURI("my-project", "my-job", "US")
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{
+			Command:   CommandCancelQuery,
+			Arguments: []any{string(uri)},
+		})
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("commandCancelQuery() error = %v, want %v", err, wantErr)
+		}
+	})
+
+	t.Run("propagates errors from Cancel", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		bqClient := mock_bigquery.NewMockClient(ctrl)
+		job := mock_bigquery.NewMockBigqueryJob(ctrl)
+		bqClient.EXPECT().JobFromProject(gomock.Any(), "my-project", "my-job", "US").Return(job, nil)
+		wantErr := errors.New("job already finished")
+		job.EXPECT().Cancel(gomock.Any()).Return(wantErr)
+
+		h := &Handler{bqClient: bqClient}
+
+		uri := lsp.NewJobVirtualTextDocumentURI("my-project", "my-job", "US")
+		_, err := h.commandCancelQuery(t.Context(), lsp.ExecuteCommandParams{
+			Command:   CommandCancelQuery,
+			Arguments: []any{string(uri)},
+		})
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("commandCancelQuery() error = %v, want %v", err, wantErr)
+		}
+	})
+}
+
 func TestParseSpreadsheetURL(t *testing.T) {
 	tests := map[string]struct {
 		sheetURL              string

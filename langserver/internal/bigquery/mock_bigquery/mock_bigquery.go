@@ -237,6 +237,20 @@ func (m *MockBigqueryJob) EXPECT() *MockBigqueryJobMockRecorder {
 	return m.recorder
 }
 
+// Cancel mocks base method.
+func (m *MockBigqueryJob) Cancel(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Cancel", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Cancel indicates an expected call of Cancel.
+func (mr *MockBigqueryJobMockRecorder) Cancel(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cancel", reflect.TypeOf((*MockBigqueryJob)(nil).Cancel), arg0)
+}
+
 // Config mocks base method.
 func (m *MockBigqueryJob) Config() (bigquery.JobConfig, error) {
 	m.ctrl.T.Helper()

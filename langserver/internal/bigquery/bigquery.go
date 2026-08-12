@@ -239,6 +239,7 @@ type BigqueryJob interface {
 	LastStatus() *bigquery.JobStatus
 	Config() (bigquery.JobConfig, error)
 	URL() string
+	Cancel(context.Context) error
 }
 
 type bqJobWrapper struct {

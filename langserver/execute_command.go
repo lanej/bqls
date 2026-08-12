@@ -23,6 +23,7 @@ import (
 
 const (
 	CommandExecuteQuery     = "bqls.executeQuery"
+	CommandCancelQuery      = "bqls.cancelQuery"
 	CommandListDatasets     = "bqls.listDatasets"
 	CommandListTables       = "bqls.listTables"
 	CommandListJobHistories = "bqls.listJobHistories"
@@ -94,6 +95,8 @@ func (h *Handler) handleWorkspaceExecuteCommand(ctx context.Context, conn *jsonr
 	switch params.Command {
 	case CommandExecuteQuery:
 		return h.commandExecuteQuery(ctx, params)
+	case CommandCancelQuery:
+		return h.commandCancelQuery(ctx, params)
 	case CommandListDatasets:
 		return h.commandListDatasets(ctx, params)
 	case CommandListTables:
@@ -138,6 +141,40 @@ func (h *Handler) commandExecuteQuery(ctx context.Context, params lsp.ExecuteCom
 			URI: lsp.NewJobVirtualTextDocumentURI(job.ProjectID(), job.ID(), job.Location()),
 		},
 	}, nil
+}
+
+// params.Arguments[0]: job virtual text document uri, as returned by bqls.executeQuery
+func (h *Handler) commandCancelQuery(ctx context.Context, params lsp.ExecuteCommandParams) (any, error) {
+	if len(params.Arguments) != 1 {
+		return nil, fmt.Errorf("job uri arguments is not provided")
+	}
+	uri, ok := params.Arguments[0].(string)
+	if !ok {
+		return nil, fmt.Errorf("arguments should be string, but got %T", params.Arguments[0])
+	}
+
+	documentURI := lsp.DocumentURI(uri)
+	if !documentURI.IsVirtualTextDocument() {
+		return nil, fmt.Errorf("document uri should be virtual text document")
+	}
+	info, err := documentURI.VirtualTextDocumentInfo()
+	if err != nil {
+		return nil, err
+	}
+	if info.JobID == "" {
+		return nil, fmt.Errorf("document uri should be a job virtual text document")
+	}
+
+	job, err := h.bqClient.JobFromProject(ctx, info.ProjectID, info.JobID, info.Location)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+
+	if err := job.Cancel(ctx); err != nil {
+		return nil, fmt.Errorf("failed to cancel job: %w", err)
+	}
+
+	return nil, nil
 }
 
 func (h *Handler) commandListProjects(ctx context.Context, params lsp.ExecuteCommandParams) (*lsp.ListProjectsResult, error) {
