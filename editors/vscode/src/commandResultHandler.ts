@@ -19,6 +19,17 @@ export function isExternalUrl(url: string): boolean {
 	return url.startsWith("http://") || url.startsWith("https://");
 }
 
+// Mirrors the server's VirtualTextDocumentInfo.validate (document_uri.go):
+// only job virtual documents (as opposed to table ones) can be cancelled via
+// bqls.cancelQuery.
+export function isJobVirtualDocumentUri(uriString: string): boolean {
+	return /\/job\/[^/]+\/location\/[^/]+/.test(uriString);
+}
+
+export function cancelQueryArguments(jobUri: string): unknown[] {
+	return [jobUri];
+}
+
 export function jobHistoryQuickPickItems(
 	result: ListJobHistoryResult,
 ): JobHistoryQuickPickItem[] {

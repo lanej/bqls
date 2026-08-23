@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+	cancelQueryArguments,
 	isExternalUrl,
+	isJobVirtualDocumentUri,
 	jobHistoryQuickPickItems,
 } from "./commandResultHandler";
 
@@ -55,5 +57,35 @@ describe("jobHistoryQuickPickItems", () => {
 
 	it("returns an empty array when there are no jobs", () => {
 		expect(jobHistoryQuickPickItems({ jobs: [] })).toEqual([]);
+	});
+});
+
+describe("isJobVirtualDocumentUri", () => {
+	it("returns true for a job virtual document uri", () => {
+		expect(
+			isJobVirtualDocumentUri(
+				"bqls://project/my-project/job/my-job/location/US",
+			),
+		).toBe(true);
+	});
+
+	it("returns false for a table virtual document uri", () => {
+		expect(
+			isJobVirtualDocumentUri(
+				"bqls://project/my-project/dataset/my-dataset/table/my-table",
+			),
+		).toBe(false);
+	});
+
+	it("returns false for a non-bqls uri", () => {
+		expect(isJobVirtualDocumentUri("file:///tmp/query.sql")).toBe(false);
+	});
+});
+
+describe("cancelQueryArguments", () => {
+	it("wraps the job uri in an arguments array", () => {
+		expect(
+			cancelQueryArguments("bqls://project/my-project/job/my-job/location/US"),
+		).toEqual(["bqls://project/my-project/job/my-job/location/US"]);
 	});
 });

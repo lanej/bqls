@@ -27,6 +27,21 @@ Response:
 
 You can get the result of the query by requesting the `bqls/virtualTextDocument`.
 
+### `bqls.cancelQuery`
+
+Cancel a running query job, given the job virtual text document uri returned by `bqls.executeQuery`.
+
+Request:
+
+```json
+{
+    "command": "bqls.cancelQuery",
+    "arguments": ["bqls://project/${project}/job/${job}/location/${location}"]
+}
+```
+
+Response: `null` on success.
+
 ### `bqls.listDatasets`
 
 list up all datasets in the project.

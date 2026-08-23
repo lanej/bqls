@@ -17,7 +17,9 @@ import {
 	VirtualTextDocumentResult,
 } from "./virtualDocument";
 import {
+	cancelQueryArguments,
 	isExternalUrl,
+	isJobVirtualDocumentUri,
 	jobHistoryQuickPickItems,
 	ListJobHistoryResult,
 } from "./commandResultHandler";
@@ -56,6 +58,7 @@ import {
 const VIRTUAL_SCHEME = "bqls";
 
 const COMMAND_EXECUTE_QUERY = "bqls.executeQuery";
+const COMMAND_CANCEL_QUERY = "bqls.cancelQuery";
 const COMMAND_LIST_JOB_HISTORIES = "bqls.listJobHistories";
 const COMMAND_SAVE_RESULT = "bqls.saveResult";
 
@@ -70,6 +73,11 @@ let client: LanguageClient | undefined;
 // Tracks the WebviewPanel open for each uri so repeated opens reveal the
 // existing panel instead of creating a duplicate.
 const webviewPanels = new Map<string, vscode.WebviewPanel>();
+
+// Resolved when the bqls/publishVirtualTextDocument notification (preview or
+// error) arrives for a pending job virtual document, so
+// waitForJobCompletion's cancellable progress notification knows to close.
+const pendingJobCompletions = new Map<string, () => void>();
 
 // Whatever route opens a bqls:// document (Execute Query, List Job
 // Histories, Go to Definition), render it in the same BigQuery
@@ -122,9 +130,53 @@ async function openVirtualDocument(uriString: string): Promise<void> {
 			result.schema,
 		);
 		panel.webview.html = renderPage({ detailsHtml, previewHtml });
+		return;
 	}
-	// If result.pending is true, wait for the bqls/publishVirtualTextDocument
-	// notification to fill in the panel via postMessage.
+	// result.pending is true: wait for the bqls/publishVirtualTextDocument
+	// notification to fill in the panel via postMessage. For a running query
+	// job, also show a cancellable progress notification so the user isn't
+	// stuck waiting with no way out.
+	if (isJobVirtualDocumentUri(uriString)) {
+		void waitForJobCompletion(uriString);
+	}
+}
+
+// Shows a cancellable "Running query..." notification for as long as
+// uriString's virtual document stays pending. Resolves once the
+// corresponding bqls/publishVirtualTextDocument (preview or error)
+// notification arrives; see the onNotification handler in activate. If the
+// user cancels, asks the server to cancel the underlying query job, but
+// keeps the notification open until the server actually reports completion.
+async function waitForJobCompletion(uriString: string): Promise<void> {
+	if (!client) {
+		return;
+	}
+	const activeClient = client;
+
+	await vscode.window.withProgress(
+		{
+			location: vscode.ProgressLocation.Notification,
+			title: "Running BigQuery query...",
+			cancellable: true,
+		},
+		(_progress, token) =>
+			new Promise<void>((resolve) => {
+				pendingJobCompletions.set(uriString, resolve);
+				token.onCancellationRequested(() => {
+					activeClient
+						.sendRequest("workspace/executeCommand", {
+							command: COMMAND_CANCEL_QUERY,
+							arguments: cancelQueryArguments(uriString),
+						})
+						.catch((err: unknown) => {
+							const message = err instanceof Error ? err.message : String(err);
+							void vscode.window.showErrorMessage(
+								`bqls: failed to cancel query (${message})`,
+							);
+						});
+				});
+			}),
+	);
 }
 
 // Executing a Code Action (Command) that bqls returns doesn't show anything
@@ -579,6 +631,11 @@ export async function activate(
 		client.onNotification(
 			"bqls/publishVirtualTextDocument",
 			(params: PublishVirtualTextDocumentParams) => {
+				if (params.error || params.kind === "preview") {
+					pendingJobCompletions.get(params.textDocument.uri)?.();
+					pendingJobCompletions.delete(params.textDocument.uri);
+				}
+
 				const panel = webviewPanels.get(params.textDocument.uri);
 				if (!panel) {
 					return; // panel was closed before the fetch completed
