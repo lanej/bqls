@@ -292,7 +292,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
+				{Language: "sql", Value: "name STRING"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("name description"),
 			},
 		},
 		"hover column with alias": {
@@ -317,7 +319,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
+				{Language: "sql", Value: "name STRING"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("name description"),
 			},
 		},
 		"hover column with table alias": {
@@ -340,7 +344,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
+				{Language: "sql", Value: "name STRING"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("name description"),
 			},
 		},
 		"hover column unnest record": {
@@ -374,8 +380,8 @@ range partitioned table description
 			},
 			expectMarkedStrings: []lsp.MarkedString{
 				{
-					Language: "markdown",
-					Value:    "STRING",
+					Language: "sql",
+					Value:    "key STRING",
 				},
 			},
 		},
@@ -401,7 +407,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
+				{Language: "sql", Value: "name STRING"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("name description"),
 			},
 		},
 		"hover unnest table": {
@@ -436,7 +444,10 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| params | RECORD | REPEATED | params description |\n| &nbsp;&nbsp;key | STRING | NULLABLE |  |\n| &nbsp;&nbsp;value | STRING | NULLABLE |  |\n"),
+				{Language: "sql", Value: "params RECORD"},
+				lsp.RawMarkedString("Mode: REPEATED"),
+				lsp.RawMarkedString("params description"),
+				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| key | STRING | NULLABLE |  |\n| value | STRING | NULLABLE |  |\n"),
 			},
 		},
 		"hover function call": {
@@ -500,7 +511,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| json | JSON | NULLABLE | json description |\n"),
+				{Language: "sql", Value: "json JSON"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("json description"),
 			},
 		},
 		"hover with WITH clause": {
@@ -522,7 +535,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type |\n| --- | --- |\n| id | INT64 |\n"),
+				{Language: "sql", Value: "id INT64"},
 			},
 		},
 		"hover in WITH clause": {
@@ -545,7 +558,9 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| id | INTEGER | NULLABLE | id description |\n"),
+				{Language: "sql", Value: "id INTEGER"},
+				lsp.RawMarkedString("Mode: NULLABLE"),
+				lsp.RawMarkedString("id description"),
 			},
 		},
 		"hover WITH clause reference name": {

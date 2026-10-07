@@ -81,9 +81,13 @@ func (p *Project) TermDocument(ctx context.Context, uri lsp.DocumentURI, positio
 			return nil, nil
 		}
 		typeName, _ := typ.DebugString(false)
+		names, _ := targetNode.ToIdentifierVector()
+		if len(names) > 0 {
+			typeName = names[len(names)-1] + " " + typeName
+		}
 		return []lsp.MarkedString{
 			{
-				Language: "markdown",
+				Language: "sql",
 				Value:    typeName,
 			},
 		}, nil
@@ -100,16 +104,14 @@ func (p *Project) TermDocument(ctx context.Context, uri lsp.DocumentURI, positio
 		if err != nil {
 			// cannot find table metadata
 			return []lsp.MarkedString{
-				lsp.RawMarkedString(createColumnMarkdownTable(column)),
+				createColumnMarkedString(column),
 			}, nil
 		}
 
 		colName, _ := column.Name()
 		for _, f := range tableMetadata.Schema {
 			if colName == f.Name {
-				return []lsp.MarkedString{
-					lsp.RawMarkedString(createBigQuerySchemaMarkdownTable(bigquery.Schema{f})),
-				}, nil
+				return createBigQueryFieldMarkedStrings(f), nil
 			}
 		}
 	}
@@ -124,16 +126,14 @@ func (p *Project) TermDocument(ctx context.Context, uri lsp.DocumentURI, positio
 		tableMetadata, err := p.analyzer.GetTableMetadataFromPath(ctx, tableName)
 		if err != nil {
 			return []lsp.MarkedString{
-				lsp.RawMarkedString(createColumnMarkdownTable(column)),
+				createColumnMarkedString(column),
 			}, nil
 		}
 
 		colName, _ := column.Name()
 		for _, f := range tableMetadata.Schema {
 			if colName == f.Name {
-				return []lsp.MarkedString{
-					lsp.RawMarkedString(createBigQuerySchemaMarkdownTable(bigquery.Schema{f})),
-				}, nil
+				return createBigQueryFieldMarkedStrings(f), nil
 			}
 		}
 	}
@@ -277,9 +277,7 @@ func (p *Project) termDocumentFromASTColumnRef(ctx context.Context, parsedFile f
 		}
 		for _, f := range meta.Schema {
 			if f.Name == colName {
-				return []lsp.MarkedString{
-					lsp.RawMarkedString(createBigQuerySchemaMarkdownTable(bigquery.Schema{f})),
-				}, true
+				return createBigQueryFieldMarkedStrings(f), true
 			}
 		}
 	}
@@ -638,8 +636,9 @@ func createColumnListMarkdownTable(columnList []*googlesql.ResolvedColumn) strin
 	return columnMarkdownTable(columns)
 }
 
-func createColumnMarkdownTable(column *googlesql.ResolvedColumn) string {
-	return columnMarkdownTable([]columnNameType{resolvedColumnNameType(column)})
+func createColumnMarkedString(column *googlesql.ResolvedColumn) lsp.MarkedString {
+	c := resolvedColumnNameType(column)
+	return lsp.MarkedString{Language: "sql", Value: c.name + " " + c.typeName}
 }
 
 func resolvedColumnNameType(column *googlesql.ResolvedColumn) columnNameType {
