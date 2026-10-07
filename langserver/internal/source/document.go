@@ -83,7 +83,7 @@ func (p *Project) TermDocument(ctx context.Context, uri lsp.DocumentURI, positio
 		typeName, _ := typ.DebugString(false)
 		names, _ := targetNode.ToIdentifierVector()
 		if len(names) > 0 {
-			typeName = names[len(names)-1] + " " + typeName
+			typeName = names[len(names)-1] + ": " + typeName
 		}
 		return []lsp.MarkedString{
 			{
@@ -638,7 +638,7 @@ func createColumnListMarkdownTable(columnList []*googlesql.ResolvedColumn) strin
 
 func createColumnMarkedString(column *googlesql.ResolvedColumn) lsp.MarkedString {
 	c := resolvedColumnNameType(column)
-	return lsp.MarkedString{Language: "sql", Value: c.name + " " + c.typeName}
+	return lsp.MarkedString{Language: "sql", Value: c.name + ": " + c.typeName}
 }
 
 func resolvedColumnNameType(column *googlesql.ResolvedColumn) columnNameType {
@@ -654,13 +654,15 @@ func resolvedColumnNameType(column *googlesql.ResolvedColumn) columnNameType {
 func buildBigQueryTableMetadataMarkedString(metadata *bigquery.TableMetadata) ([]lsp.MarkedString, error) {
 	var sb strings.Builder
 	sb.Grow(1024)
-	fmt.Fprintf(&sb, "## %s\n", metadata.FullID)
+	// BigQuery metadata uses project:dataset.table; show the SQL reference.
+	name := strings.Replace(metadata.FullID, ":", ".", 1)
+	fmt.Fprintf(&sb, "Table: %s\n", name)
 
 	if len(metadata.Description) > 0 {
 		fmt.Fprintf(&sb, "%s\n", metadata.Description)
 	}
 
-	sb.WriteString("\n### Table info\n\n")
+	sb.WriteString("\nTable info\n\n")
 
 	fmt.Fprintf(&sb, "* Created: %s\n", metadata.CreationTime.Format("2006-01-02 15:04:05"))
 	// If cache the metadata, we should delete last modified time because it is confusing.
@@ -707,7 +709,7 @@ func buildBigQueryTableMetadataMarkedString(metadata *bigquery.TableMetadata) ([
 		}
 	}
 
-	sb.WriteString("\n### Storage info\n\n")
+	sb.WriteString("\nStorage info\n\n")
 
 	p := message.NewPrinter(language.English)
 	sb.WriteString(p.Sprintf("* Number of rows: %d\n", metadata.NumRows))
@@ -723,12 +725,7 @@ func buildBigQueryTableMetadataMarkedString(metadata *bigquery.TableMetadata) ([
 	// Details webview tab (GetTableDetails) uses the structured
 	// BuildFieldSchema data instead, to avoid showing the same schema twice
 	// in two different formats.
-	return []lsp.MarkedString{
-		{
-			Language: "markdown",
-			Value:    sb.String(),
-		},
-	}, nil
+	return []lsp.MarkedString{lsp.RawMarkedString(sb.String())}, nil
 }
 
 func bytesConvert(bytes int64) string {

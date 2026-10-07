@@ -36,7 +36,7 @@ func TestProject_TermDocument(t *testing.T) {
 				ctrl := gomock.NewController(t)
 				bqClient := mock_bigquery.NewMockClient(ctrl)
 				bqClient.EXPECT().GetTableMetadata(gomock.Any(), "project", "dataset", "table").Return(&bq.TableMetadata{
-					FullID:           "project.dataset.table",
+					FullID:           "project:dataset.table",
 					Description:      "table description",
 					CreationTime:     time.Date(2023, 6, 17, 0, 0, 0, 0, time.UTC),
 					LastModifiedTime: time.Date(2023, 6, 17, 0, 0, 0, 0, time.UTC),
@@ -51,22 +51,21 @@ func TestProject_TermDocument(t *testing.T) {
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{
-					Language: "markdown",
-					Value: `## project.dataset.table
+				lsp.RawMarkedString(`Table: project.dataset.table
 table description
 
-### Table info
+Table info
 
 * Created: 2023-06-17 00:00:00
 * Last modified: 2023-06-17 00:00:00
 
-### Storage info
+Storage info
 
 * Number of rows: 0
 * Total logical bytes: 0 bytes
-`,
-				},
+
+[Docs](https://console.cloud.google.com/bigquery?project=project&ws=!1m5!1m4!4m3!1sproject!2sdataset!3stable)
+`),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
 			},
 		},
@@ -94,22 +93,19 @@ table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{
-					Language: "markdown",
-					Value: `## project.dataset.table
+				lsp.RawMarkedString(`Table: project.dataset.table
 table description
 
-### Table info
+Table info
 
 * Created: 2023-06-17 00:00:00
 * Last modified: 2023-06-17 00:00:00
 
-### Storage info
+Storage info
 
 * Number of rows: 0
 * Total logical bytes: 0 bytes
-`,
-				},
+`),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
 			},
 		},
@@ -144,12 +140,10 @@ table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{
-					Language: "markdown",
-					Value: `## project.dataset.partitioned_table
+				lsp.RawMarkedString(`Table: project.dataset.partitioned_table
 partitioned table description
 
-### Table info
+Table info
 
 * Created: 2023-06-17 00:00:00
 * Last modified: 2023-06-17 00:00:00
@@ -157,12 +151,11 @@ partitioned table description
   * Type: DAY
   * Field: created_at
 
-### Storage info
+Storage info
 
 * Number of rows: 0
 * Total logical bytes: 0 bytes
-`,
-				},
+`),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| id | INTEGER | NULLABLE | id description |\n| created_at | TIMESTAMP | NULLABLE |  |\n"),
 			},
 		},
@@ -201,12 +194,10 @@ partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{
-					Language: "markdown",
-					Value: `## project.dataset.range_partitioned_table
+				lsp.RawMarkedString(`Table: project.dataset.range_partitioned_table
 range partitioned table description
 
-### Table info
+Table info
 
 * Created: 2023-06-17 00:00:00
 * Last modified: 2023-06-17 00:00:00
@@ -216,12 +207,11 @@ range partitioned table description
   * End: 1000
   * Interval: 100
 
-### Storage info
+Storage info
 
 * Number of rows: 0
 * Total logical bytes: 0 bytes
-`,
-				},
+`),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| customer_id | INTEGER | NULLABLE | customer id description |\n| order_date | DATE | NULLABLE |  |\n"),
 			},
 		},
@@ -247,21 +237,18 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{
-					Language: "markdown",
-					Value: `## project.dataset.table
+				lsp.RawMarkedString(`Table: project.dataset.table
 
-### Table info
+Table info
 
 * Created: 2023-06-17 00:00:00
 * Last modified: 2023-06-17 00:00:00
 
-### Storage info
+Storage info
 
 * Number of rows: 0
 * Total logical bytes: 0 bytes
-`,
-				},
+`),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| name | STRING | NULLABLE | name description |\n"),
 			},
 		},
@@ -292,8 +279,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "name STRING"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "name: STRING (nullable)"},
 				lsp.RawMarkedString("name description"),
 			},
 		},
@@ -319,8 +305,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "name STRING"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "name: STRING (nullable)"},
 				lsp.RawMarkedString("name description"),
 			},
 		},
@@ -344,8 +329,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "name STRING"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "name: STRING (nullable)"},
 				lsp.RawMarkedString("name description"),
 			},
 		},
@@ -381,7 +365,7 @@ range partitioned table description
 			expectMarkedStrings: []lsp.MarkedString{
 				{
 					Language: "sql",
-					Value:    "key STRING",
+					Value:    "key: STRING",
 				},
 			},
 		},
@@ -407,8 +391,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "name STRING"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "name: STRING (nullable)"},
 				lsp.RawMarkedString("name description"),
 			},
 		},
@@ -444,8 +427,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "params RECORD"},
-				lsp.RawMarkedString("Mode: REPEATED"),
+				{Language: "sql", Value: "params: RECORD (repeated)"},
 				lsp.RawMarkedString("params description"),
 				lsp.RawMarkedString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n| key | STRING | NULLABLE |  |\n| value | STRING | NULLABLE |  |\n"),
 			},
@@ -511,8 +493,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "json JSON"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "json: JSON (nullable)"},
 				lsp.RawMarkedString("json description"),
 			},
 		},
@@ -535,7 +516,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "id INT64"},
+				{Language: "sql", Value: "id: INT64"},
 			},
 		},
 		"hover in WITH clause": {
@@ -558,8 +539,7 @@ range partitioned table description
 				return bqClient
 			},
 			expectMarkedStrings: []lsp.MarkedString{
-				{Language: "sql", Value: "id INTEGER"},
-				lsp.RawMarkedString("Mode: NULLABLE"),
+				{Language: "sql", Value: "id: INTEGER (nullable)"},
 				lsp.RawMarkedString("id description"),
 			},
 		},

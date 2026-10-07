@@ -11,15 +11,14 @@ import (
 // A field hover presents its signature and metadata directly; only RECORD
 // children need a schema table.
 func createBigQueryFieldMarkedStrings(field *bigquery.FieldSchema) []lsp.MarkedString {
-	mode := "NULLABLE"
+	mode := "nullable"
 	if field.Repeated {
-		mode = "REPEATED"
+		mode = "repeated"
 	} else if field.Required {
-		mode = "REQUIRED"
+		mode = "required"
 	}
 	result := []lsp.MarkedString{
-		{Language: "sql", Value: fmt.Sprintf("%s %s", field.Name, field.Type)},
-		lsp.RawMarkedString("Mode: " + mode),
+		{Language: "sql", Value: fmt.Sprintf("%s: %s (%s)", field.Name, field.Type, mode)},
 	}
 	if field.Description != "" {
 		result = append(result, lsp.RawMarkedString(field.Description))
