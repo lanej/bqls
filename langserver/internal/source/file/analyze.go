@@ -9,9 +9,9 @@ import (
 	googlesql "github.com/goccy/go-googlesql"
 	"github.com/kitagry/bqls/langserver/internal/bigquery"
 	"github.com/kitagry/bqls/langserver/internal/lsp"
+	"github.com/kitagry/bqls/langserver/internal/source/bqparser"
 	"github.com/kitagry/bqls/langserver/internal/source/helper"
 	"github.com/sirupsen/logrus"
-	"github.com/kitagry/bqls/langserver/internal/source/bqparser"
 )
 
 type Analyzer struct {
@@ -274,6 +274,7 @@ func (a *Analyzer) ParseFile(uri lsp.DocumentURI, src string) ParsedFile {
 	return ParsedFile{
 		URI:        uri,
 		Src:        src,
+		FixedSrc:   fixedSrc,
 		Node:       node,
 		RNode:      rnode,
 		ParseTree:  bqparser.Parse(fixedSrc),
