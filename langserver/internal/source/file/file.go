@@ -244,7 +244,7 @@ func parseZetaSQLError(err error) Error {
 	return Error{Msg: errStr, Position: pos}
 }
 
-// fixDot replaces the last dot of a word with a comma. and change word to same length of 1.
+// fixDot repairs unfinished paths in SQL code, leaving quoted text and comments intact.
 // SELECT aaa. FROM table
 //
 // becomes
@@ -252,61 +252,78 @@ func parseZetaSQLError(err error) Error {
 // SELECT true FROM table
 func fixDot(src string) (fixedSrc string, errs []Error, fixOffsets []FixOffset) {
 	fixedBuilder := strings.Builder{}
-	currentOffset := 0
+	sourceOffset := 0
 	errs = make([]Error, 0, 1)
 	fixOffsets = make([]FixOffset, 0, 1)
-	for line := range strings.SplitSeq(src, "\n") {
-		ind := len(line)
-		// NOTE: to skip comments
-		// TODO: handle multi-line comments
-		if i := strings.Index(line, "--"); i != -1 {
-			ind = i
-		}
-		if i := strings.Index(line, "//"); i != -1 && i < ind {
-			ind = i
-		}
+	code := append(sqlCodeMask(src), ' ')
+	for _, loc := range lastDotRegex.FindAllIndex(code, -1) {
+		start, end := loc[0], loc[1]-1
+		targetWord := src[start:end]
+		fixedBuilder.WriteString(src[sourceOffset:start])
+		fixedBuilder.WriteString("true")
+		pos, _ := byteOffsetToPosition(src, start)
+		errs = append(errs, Error{
+			Msg:                  fmt.Sprintf("Unrecognized name: %s", targetWord),
+			Position:             pos,
+			TermLength:           len(targetWord),
+			IncompleteColumnName: targetWord,
+		})
+		fixOffsets = append(fixOffsets, FixOffset{
+			Offset: fixedBuilder.Len() - len("true") + len(targetWord),
+			Length: len("true") - len(targetWord),
+		})
+		sourceOffset = end
+	}
+	fixedBuilder.WriteString(src[sourceOffset:])
+	return fixedBuilder.String(), errs, fixOffsets
+}
 
-		// src is a word that ends with a dot.
-		loc := lastDotRegex.FindIndex([]byte(line[:ind] + " "))
-		if len(loc) != 2 {
-			fixedBuilder.WriteString(line + "\n")
-			currentOffset += len(line) + 1
+// sqlCodeMask preserves byte offsets while hiding strings, quoted identifiers
+// and comments from the unfinished-path heuristic. Zero bytes cannot match
+// either identifier characters or whitespace in lastDotRegex.
+func sqlCodeMask(src string) []byte {
+	code := []byte(src)
+	for i := 0; i < len(src); {
+		start := i
+		switch {
+		case strings.HasPrefix(src[i:], "--"), strings.HasPrefix(src[i:], "//"), src[i] == '#':
+			for i < len(src) && src[i] != '\n' && src[i] != '\r' {
+				i++
+			}
+		case strings.HasPrefix(src[i:], "/*"):
+			i += 2
+			for i < len(src) && !strings.HasPrefix(src[i:], "*/") {
+				i++
+			}
+			if i < len(src) {
+				i += 2
+			}
+		case src[i] == '\'', src[i] == '"', src[i] == '`':
+			quote := src[i : i+1]
+			if quote != "`" && strings.HasPrefix(src[i:], strings.Repeat(quote, 3)) {
+				quote = strings.Repeat(quote, 3)
+			}
+			i += len(quote)
+			for i < len(src) {
+				if src[i] == '\\' {
+					i++
+					if i < len(src) {
+						i++
+					}
+				} else if strings.HasPrefix(src[i:], quote) {
+					i += len(quote)
+					break
+				} else {
+					i++
+				}
+			}
+		default:
+			i++
 			continue
 		}
-
-		for len(loc) == 2 {
-			// sql.Rawtext[loc[1]] is a space or end of file.
-			srcStart := currentOffset + loc[0]
-			targetWord := line[loc[0] : loc[1]-1]
-			line = line[:loc[0]] + "true" + line[loc[1]-1:]
-			pos, _ := byteOffsetToPosition(src, srcStart)
-			errs = append(errs, Error{
-				Msg:                  fmt.Sprintf("Unrecognized name: %s", targetWord),
-				Position:             pos,
-				TermLength:           len(targetWord),
-				IncompleteColumnName: targetWord,
-			})
-			fixOffsets = append(fixOffsets, FixOffset{
-				Offset: srcStart + len(targetWord),
-				Length: len("true") - len(targetWord),
-			})
-
-			oldLoc := loc
-			ind -= len(targetWord) - len("true")
-			loc = lastDotRegex.FindIndex([]byte(line[:ind] + " "))
-			if len(loc) == 2 && loc[0] == oldLoc[0] {
-				break
-			}
-		}
-		fixedBuilder.WriteString(line + "\n")
-		currentOffset += len(line) + 1
+		clear(code[start:i])
 	}
-
-	fixed := fixedBuilder.String()
-	if !strings.HasSuffix(src, "\n") && strings.HasSuffix(fixed, "\n") {
-		fixed = fixed[:len(fixed)-1]
-	}
-	return fixed, errs, fixOffsets
+	return code
 }
 
 // fix SELECT list must not be empty
