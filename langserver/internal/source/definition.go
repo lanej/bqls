@@ -7,10 +7,33 @@ import (
 	googlesql "github.com/goccy/go-googlesql"
 	"github.com/kitagry/bqls/langserver/internal/lsp"
 	"github.com/kitagry/bqls/langserver/internal/source/file"
+	"github.com/kitagry/bqls/langserver/internal/source/sqldoc"
 )
 
 func (p *Project) LookupIdent(ctx context.Context, uri lsp.DocumentURI, position lsp.Position) ([]lsp.Location, error) {
 	sql := p.cache.Get(uri)
+	if sql == nil {
+		return nil, nil
+	}
+	doc := sqldoc.Parse(sql.RawText)
+	offset := sourceOffset(sql.RawText, position)
+	if loc := doc.LocalDefinition(offset); loc != nil {
+		return []lsp.Location{{URI: uri, Range: sourceRange(sql.RawText, loc.Start, loc.End)}}, nil
+	}
+	if target := doc.TableReference(offset); target != "" {
+		if locations := p.localTableDefinitions(ctx, uri, target); len(locations) > 0 {
+			return locations, nil
+		}
+		metadata, err := p.analyzer.GetTableMetadataFromPath(ctx, target)
+		if err != nil {
+			return nil, nil
+		}
+		project, dataset, table, ok := extractTableIDsFromMedatada(metadata)
+		if !ok {
+			return nil, nil
+		}
+		return []lsp.Location{{URI: lsp.NewTableSchemaDocumentURI(project, dataset, table)}}, nil
+	}
 	parsedFile := p.analyzer.ParseFile(uri, sql.RawText)
 	defer parsedFile.Close()
 
@@ -158,9 +181,6 @@ func (p *Project) lookupTablePathExpressionNode(ctx context.Context, uri lsp.Doc
 	// Search table name in table path expression
 	result := p.listupTargetTableExpressionEntries(ctx, parsedFile, uri, tableName, tablePathRastNode)
 
-	// Search table name in with clause
-	result = append(result, p.listupTargetWithClauseEntries(parsedFile, uri, tableName)...)
-
 	return result, nil
 }
 
@@ -191,7 +211,7 @@ func (p *Project) listupTargetTableExpressionEntries(ctx context.Context, parsed
 
 	return []lsp.Location{
 		{
-			URI: lsp.NewTableVirtualTextDocumentURI(projectID, datasetID, tableID),
+			URI: lsp.NewTableSchemaDocumentURI(projectID, datasetID, tableID),
 			Range: lsp.Range{
 				Start: lsp.Position{
 					Line:      0,
@@ -204,36 +224,4 @@ func (p *Project) listupTargetTableExpressionEntries(ctx context.Context, parsed
 			},
 		},
 	}
-}
-
-func (p *Project) listupTargetWithClauseEntries(parsedFile file.ParsedFile, uri lsp.DocumentURI, tableName string) []lsp.Location {
-	withClauseEntries := file.ListAstNode[*googlesql.ASTWithClauseEntry](parsedFile.Node)
-	result := make([]lsp.Location, 0, len(withClauseEntries))
-	for _, entry := range withClauseEntries {
-		aliasedQuery, err := entry.AliasedQuery()
-		if err != nil || aliasedQuery == nil {
-			continue
-		}
-		alias, err := aliasedQuery.Alias()
-		if err != nil || alias == nil {
-			continue
-		}
-		name, err := alias.GetAsString()
-		if err != nil || name != tableName {
-			continue
-		}
-		loc, err := alias.GetParseLocationRange()
-		if err != nil || loc == nil {
-			continue
-		}
-		r, ok := parsedFile.ToLspRange(loc)
-		if !ok {
-			continue
-		}
-		result = append(result, lsp.Location{
-			URI:   uri,
-			Range: r,
-		})
-	}
-	return result
 }

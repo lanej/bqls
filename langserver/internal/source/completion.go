@@ -12,6 +12,12 @@ import (
 
 func (p *Project) Complete(ctx context.Context, uri lsp.DocumentURI, position lsp.Position) ([]completion.CompletionItem, error) {
 	sql := p.cache.Get(uri)
+	if sql == nil {
+		return nil, nil
+	}
+	if items, handled := localCompletions(sql.RawText, position); handled {
+		return items, nil
+	}
 	parsedFile := p.analyzer.ParseFile(uri, sql.RawText)
 	defer parsedFile.Close()
 

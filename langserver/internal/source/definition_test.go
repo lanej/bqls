@@ -92,7 +92,7 @@ SELECT a FROM data2|`,
 			},
 			expectLocations: []lsp.Location{
 				{
-					URI: lsp.NewTableVirtualTextDocumentURI("project", "dataset", "table"),
+					URI: lsp.NewTableSchemaDocumentURI("project", "dataset", "table"),
 					Range: lsp.Range{
 						Start: lsp.Position{
 							Line:      0,
@@ -203,7 +203,7 @@ SELECT a FROM data2|`,
 			},
 			expectLocations: []lsp.Location{
 				{
-					URI: lsp.NewTableVirtualTextDocumentURI("project", "dataset", "table"),
+					URI: lsp.NewTableSchemaDocumentURI("project", "dataset", "table"),
 					Range: lsp.Range{
 						Start: lsp.Position{
 							Line:      0,

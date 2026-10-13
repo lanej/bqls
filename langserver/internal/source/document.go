@@ -11,12 +11,19 @@ import (
 	"github.com/kitagry/bqls/langserver/internal/function"
 	"github.com/kitagry/bqls/langserver/internal/lsp"
 	"github.com/kitagry/bqls/langserver/internal/source/file"
+	"github.com/kitagry/bqls/langserver/internal/source/sqldoc"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
 
 func (p *Project) TermDocument(ctx context.Context, uri lsp.DocumentURI, position lsp.Position) ([]lsp.MarkedString, error) {
 	sql := p.cache.Get(uri)
+	if sql == nil {
+		return nil, nil
+	}
+	if doc := sqldoc.Parse(sql.RawText).Hover(sourceOffset(sql.RawText, position)); doc != "" {
+		return []lsp.MarkedString{lsp.RawMarkedString(doc)}, nil
+	}
 	parsedFile := p.analyzer.ParseFile(uri, sql.RawText)
 	defer parsedFile.Close()
 

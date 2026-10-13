@@ -43,8 +43,10 @@ func (r Range) String() string {
 }
 
 type Location struct {
-	URI   DocumentURI `json:"uri"`
-	Range Range       `json:"range"`
+	// CandidateName asks navigation clients to confirm an unqualified source match.
+	CandidateName string      `json:"bqlsCandidateName,omitempty"`
+	URI           DocumentURI `json:"uri"`
+	Range         Range       `json:"range"`
 }
 
 type Diagnostic struct {
