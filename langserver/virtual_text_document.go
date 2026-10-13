@@ -27,6 +27,15 @@ func (h *Handler) handleVirtualTextDocument(ctx context.Context, conn *jsonrpc2.
 		return nil, err
 	}
 
+	if virtualTextDocument.SchemaOnly {
+		contents, schema, _, err := h.project.GetTableDetails(ctx, virtualTextDocument.ProjectID, virtualTextDocument.DatasetID, virtualTextDocument.TableID)
+		if err != nil {
+			return nil, err
+		}
+		contents = append(contents, lsp.RawMarkedString(source.SchemaMarkdown(schema)))
+		return lsp.VirtualTextDocument{Contents: contents, Schema: schema}, nil
+	}
+
 	if h.initializeParams.InitializationOptions.SupportsAsyncVirtualTextDocument {
 		h.virtualTextDocumentRequest <- params.TextDocument.URI
 		return lsp.VirtualTextDocument{Pending: true}, nil

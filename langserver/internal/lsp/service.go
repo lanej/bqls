@@ -451,18 +451,23 @@ type MarkupContent struct {
 	Value string     `json:"value"`
 }
 
+type CompletionItemLabelDetails struct {
+	Description string `json:"description,omitempty"`
+}
+
 type CompletionItem struct {
-	Label               string             `json:"label"`
-	Kind                CompletionItemKind `json:"kind,omitempty"`
-	Detail              string             `json:"detail,omitempty"`
-	Documentation       MarkupContent      `json:"documentation,omitempty"`
-	SortText            string             `json:"sortText,omitempty"`
-	FilterText          string             `json:"filterText,omitempty"`
-	InsertText          string             `json:"insertText,omitempty"`
-	InsertTextFormat    InsertTextFormat   `json:"insertTextFormat,omitempty"`
-	TextEdit            *TextEdit          `json:"textEdit,omitempty"`
-	AdditionalTextEdits []TextEdit         `json:"additionalTextEdits,omitempty"`
-	Data                any                `json:"data,omitempty"`
+	LabelDetails        *CompletionItemLabelDetails `json:"labelDetails,omitempty"`
+	Label               string                      `json:"label"`
+	Kind                CompletionItemKind          `json:"kind,omitempty"`
+	Detail              string                      `json:"detail,omitempty"`
+	Documentation       MarkupContent               `json:"documentation,omitempty"`
+	SortText            string                      `json:"sortText,omitempty"`
+	FilterText          string                      `json:"filterText,omitempty"`
+	InsertText          string                      `json:"insertText,omitempty"`
+	InsertTextFormat    InsertTextFormat            `json:"insertTextFormat,omitempty"`
+	TextEdit            *TextEdit                   `json:"textEdit,omitempty"`
+	AdditionalTextEdits []TextEdit                  `json:"additionalTextEdits,omitempty"`
+	Data                any                         `json:"data,omitempty"`
 }
 
 type CompletionList struct {

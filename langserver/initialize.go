@@ -59,7 +59,7 @@ func (h *Handler) buildInitializeResult() lsp.InitializeResult {
 			CodeActionProvider:         true,
 			CompletionProvider: &lsp.CompletionOptions{
 				ResolveProvider:   true,
-				TriggerCharacters: []string{"*", "."},
+				TriggerCharacters: []string{"*", ".", "(", ",", " "},
 			},
 			ExecuteCommandProvider: &lsp.ExecuteCommandOptions{
 				Commands: []string{

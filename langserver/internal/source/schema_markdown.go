@@ -56,3 +56,26 @@ func writeBigQuerySchemaMarkdownTableRows(sb *strings.Builder, schema bigquery.S
 		}
 	}
 }
+
+// SchemaMarkdown renders a metadata-only virtual schema for navigation clients.
+func SchemaMarkdown(fields []lsp.FieldSchema) string {
+	var out strings.Builder
+	out.WriteString("| Name | Type | Mode | Description |\n| --- | --- | --- | --- |\n")
+	var rows func([]lsp.FieldSchema, int)
+	cell := func(s string) string { return strings.NewReplacer("|", "\\|", "\n", " ", "\r", " ").Replace(s) }
+	rows = func(fields []lsp.FieldSchema, depth int) {
+		for _, f := range fields {
+			mode := "NULLABLE"
+			if f.Required {
+				mode = "REQUIRED"
+			}
+			if f.Repeated {
+				mode = "REPEATED"
+			}
+			fmt.Fprintf(&out, "| %s%s | %s | %s | %s |\n", strings.Repeat("&nbsp;&nbsp;", depth), cell(f.Name), cell(f.Type), mode, cell(f.Description))
+			rows(f.Fields, depth+1)
+		}
+	}
+	rows(fields, 0)
+	return out.String()
+}

@@ -3,6 +3,7 @@ package lsp
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ func (d DocumentURI) FilePath() (string, error) {
 	if !ok {
 		return "", errors.New("invalid file URI")
 	}
-	return suffix, nil
+	return url.PathUnescape(suffix)
 }
 
 func (d DocumentURI) IsVirtualTextDocument() bool {
@@ -32,7 +33,8 @@ func (d DocumentURI) VirtualTextDocumentInfo() (VirtualTextDocumentInfo, error) 
 
 	result := VirtualTextDocumentInfo{}
 	for suffix != "" {
-		for _, prefix := range []string{"project/", "dataset/", "table/", "job/", "location/"} {
+		previous := suffix
+		for _, prefix := range []string{"project/", "dataset/", "table/", "schema/", "job/", "location/"} {
 			after, ok := strings.CutPrefix(suffix, prefix)
 			if !ok {
 				continue
@@ -54,11 +56,17 @@ func (d DocumentURI) VirtualTextDocumentInfo() (VirtualTextDocumentInfo, error) 
 				result.DatasetID = val
 			} else if prefix == "table/" {
 				result.TableID = val
+			} else if prefix == "schema/" {
+				result.TableID = val
+				result.SchemaOnly = true
 			} else if prefix == "job/" {
 				result.JobID = val
 			} else if prefix == "location/" {
 				result.Location = val
 			}
+		}
+		if suffix == previous {
+			return VirtualTextDocumentInfo{}, errors.New("invalid virtual document path")
 		}
 	}
 
@@ -70,11 +78,12 @@ func (d DocumentURI) VirtualTextDocumentInfo() (VirtualTextDocumentInfo, error) 
 }
 
 type VirtualTextDocumentInfo struct {
-	ProjectID string
-	DatasetID string
-	TableID   string
-	JobID     string
-	Location  string
+	SchemaOnly bool
+	ProjectID  string
+	DatasetID  string
+	TableID    string
+	JobID      string
+	Location   string
 }
 
 func (v VirtualTextDocumentInfo) validate() error {
@@ -95,4 +104,8 @@ func (v VirtualTextDocumentInfo) validate() error {
 
 func toPtr[T any](t T) *T {
 	return &t
+}
+
+func NewTableSchemaDocumentURI(project, dataset, table string) DocumentURI {
+	return DocumentURI(fmt.Sprintf("bqls://project/%s/dataset/%s/schema/%s", project, dataset, table))
 }
