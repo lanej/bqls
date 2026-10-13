@@ -36,7 +36,16 @@ func TestProject_ParseFile(t *testing.T) {
 			expectedErrs: []file.Error{},
 		},
 		"parse dot file": {
-			file: "SELECT t. FROM `project.dataset.table` t",
+			file: "CREATE TABLE `project.dataset.new_table` (\n" +
+				"  street STRING OPTIONS(description = \"Primary mailing line. Missing is NULL; range 0..99999. \"),\n" +
+				"  unit STRING OPTIONS(description = 'Suite. Preserve text.'),\n" +
+				"  note STRING OPTIONS(description = r'''Mailing variants.\n" +
+				"    Unknown lines. Keep the literal \\' quote. '''),\n" +
+				"  `column.` STRING\n" +
+				");\n" +
+				"/* t.\n" +
+				"   record. */\n" +
+				"SELECT t. FROM `project.dataset.table` t",
 			bqTableMetadataMap: map[string]*bq.TableMetadata{
 				"project.dataset.table": {
 					Schema: bq.Schema{
@@ -51,7 +60,7 @@ func TestProject_ParseFile(t *testing.T) {
 				{
 					Msg: "Unrecognized name: t.",
 					Position: lsp.Position{
-						Line:      0,
+						Line:      9,
 						Character: 7,
 					},
 					TermLength:           2,
